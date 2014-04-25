@@ -59,8 +59,9 @@ class AuditReader
      * of this entity and always returns the latest revision below or equal the given revision
      *
      * @param string $className
-     * @param mixed $id
-     * @param int $revision
+     * @param mixed  $id
+     * @param int    $revision
+     * @throws AuditException
      * @return object
      */
     public function find($className, $id, $revision)
@@ -83,6 +84,8 @@ class AuditReader
                 $columnName = $class->fieldMappings[$idField]['columnName'];
             } else if (isset($class->associationMappings[$idField])) {
                 $columnName = $class->associationMappings[$idField]['joinColumns'][0];
+            } else {
+                continue;
             }
 
             $whereSQL .= " AND " . $columnName . " = ?";
@@ -91,6 +94,8 @@ class AuditReader
         $columnList = "";
         $columnMap  = array();
 
+        $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
+
         foreach ($class->fieldNames as $columnName => $field) {
             if ($columnList) {
                 $columnList .= ', ';
@@ -98,7 +103,7 @@ class AuditReader
 
             $type = Type::getType($class->fieldMappings[$field]['type']);
             $columnList .= $type->convertToPHPValueSQL(
-                $class->getQuotedColumnName($field, $this->platform), $this->platform) .' AS ' . $field;
+                               $quoteStrategy->getColumnName($field, $class, $this->platform), $this->platform) .' AS ' . $field;
             $columnMap[$field] = $this->platform->getSQLResultCasing($columnName);
         }
 
@@ -236,6 +241,8 @@ class AuditReader
     {
         $auditedEntities = $this->metadataFactory->getAllClassNames();
 
+        $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
+
         $changedEntities = array();
         foreach ($auditedEntities AS $className) {
             $class = $this->em->getClassMetadata($className);
@@ -248,7 +255,7 @@ class AuditReader
             foreach ($class->fieldNames as $columnName => $field) {
                 $type = Type::getType($class->fieldMappings[$field]['type']);
                 $columnList .= ', ' . $type->convertToPHPValueSQL(
-                    $class->getQuotedColumnName($field, $this->platform), $this->platform) . ' AS ' . $field;
+                        $quoteStrategy->getColumnName($field, $class, $this->platform), $this->platform) . ' AS ' . $field;
                 $columnMap[$field] = $this->platform->getSQLResultCasing($columnName);
             }
 
@@ -267,7 +274,6 @@ class AuditReader
 
             foreach ($revisionsData AS $row) {
                 $id   = array();
-                $data = array();
 
                 foreach ($class->identifier AS $idField) {
                     $id[$idField] = $row[$idField];
@@ -284,6 +290,7 @@ class AuditReader
      * Return the revision object for a particular revision.
      *
      * @param  int $rev
+     * @throws AuditException
      * @return Revision
      */
     public function findRevision($rev)
@@ -306,7 +313,8 @@ class AuditReader
      * Find all revisions that were made of entity class with given id.
      *
      * @param string $className
-     * @param mixed $id
+     * @param mixed  $id
+     * @throws AuditException
      * @return Revision[]
      */
     public function findRevisions($className, $id)
@@ -358,7 +366,8 @@ class AuditReader
      * Gets the current revision of the entity with given ID.
      *
      * @param string $className
-     * @param mixed $id
+     * @param mixed  $id
+     * @throws AuditException
      * @return integer
      */
     public function getCurrentRevision($className, $id)
@@ -407,7 +416,7 @@ class AuditReader
      * an object with a given id.
      *
      * @param string $className
-     * @param int $id
+     * @param int|int[] $id
      * @param int $oldRevision
      * @param int $newRevision
      * @return array
@@ -474,6 +483,8 @@ class AuditReader
         $columnList = "";
         $columnMap  = array();
 
+        $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
+
         foreach ($class->fieldNames as $columnName => $field) {
             if ($columnList) {
                 $columnList .= ', ';
@@ -481,7 +492,7 @@ class AuditReader
 
             $type = Type::getType($class->fieldMappings[$field]['type']);
             $columnList .= $type->convertToPHPValueSQL(
-                               $class->getQuotedColumnName($field, $this->platform), $this->platform) .' AS ' . $field;
+                               $quoteStrategy->getColumnName($field, $class, $this->platform), $this->platform) .' AS ' . $field;
             $columnMap[$field] = $this->platform->getSQLResultCasing($columnName);
         }
 

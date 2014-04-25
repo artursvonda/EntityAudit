@@ -51,7 +51,7 @@ class CurrentUserListener
     /**
      * Handles access authorization.
      *
-     * @param Event $event An Event instance
+     * @param GetResponseEvent $event An Event instance
      */
     public function handle(GetResponseEvent $event)
     {

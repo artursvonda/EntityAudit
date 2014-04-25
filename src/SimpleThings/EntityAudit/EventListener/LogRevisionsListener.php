@@ -44,17 +44,17 @@ class LogRevisionsListener implements EventSubscriber
     private $metadataFactory;
 
     /**
-     * @var Doctrine\DBAL\Connection
+     * @var \Doctrine\DBAL\Connection
      */
     private $conn;
 
     /**
-     * @var Doctrine\DBAL\Platforms\AbstractPlatform
+     * @var \Doctrine\DBAL\Platforms\AbstractPlatform
      */
     private $platform;
 
     /**
-     * @var Doctrine\ORM\EntityManager
+     * @var \Doctrine\ORM\EntityManager
      */
     private $em;
 
@@ -64,7 +64,7 @@ class LogRevisionsListener implements EventSubscriber
     private $insertRevisionSQL = array();
 
     /**
-     * @var Doctrine\ORM\UnitOfWork
+     * @var \Doctrine\ORM\UnitOfWork
      */
     private $uow;
 
@@ -166,6 +166,10 @@ class LogRevisionsListener implements EventSubscriber
         return $this->revisionId;
     }
 
+    /**
+     * @param ClassMetadata $class
+     * @return mixed
+     */
     private function getInsertRevisionSQL($class)
     {
         if (!isset($this->insertRevisionSQL[$class->name])) {
@@ -187,6 +191,8 @@ class LogRevisionsListener implements EventSubscriber
                 }
             }
 
+            $quoteStrategy = $this->em->getConfiguration()->getQuoteStrategy();
+
             foreach ($class->fieldNames AS $field) {
                 if (array_key_exists($field, $fields)) {
                     continue;
@@ -195,7 +201,7 @@ class LogRevisionsListener implements EventSubscriber
                 $placeholders[] = (!empty($class->fieldMappings[$field]['requireSQLConversion']))
                     ? $type->convertToDatabaseValueSQL('?', $this->platform)
                     : '?';
-                $sql .= ', ' . $class->getQuotedColumnName($field, $this->platform);
+                $sql .= ', ' . $quoteStrategy->getColumnName($field, $class, $this->platform);
             }
 
             $sql .= ") VALUES (" . implode(", ", $placeholders) . ")";
@@ -219,7 +225,7 @@ class LogRevisionsListener implements EventSubscriber
 
         foreach ($class->associationMappings AS $field => $assoc) {
             if (($assoc['type'] & ClassMetadata::TO_ONE) > 0 && $assoc['isOwningSide']) {
-                $targetClass = $this->em->getClassMetadata($assoc['targetEntity']);
+                $this->em->getClassMetadata($assoc['targetEntity']);
 
                 if ($entityData[$field] !== null) {
                     $relatedId = $this->uow->getEntityIdentifier($entityData[$field]);
